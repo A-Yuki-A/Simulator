@@ -9,8 +9,8 @@ import matplotlib.font_manager as fm
 from pathlib import Path  # ← Path を使うので必須
 
 # === フォント設定（日本語フォントがあれば使用） ===
-# プロジェクト内に fonts/SourceHanCodeJP-Regular.otf を置くと確実
-fp = Path("fonts/SourceHanCodeJP-Regular.otf")
+# プロジェクト内に font/SourceHanCodeJP-Regular.otf を置くと確実
+fp = Path("font/SourceHanCodeJP-Regular.otf")
 if fp.exists():
     fm.fontManager.addfont(str(fp))
     plt.rcParams["font.family"] = "Source Han Code JP"
