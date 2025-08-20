@@ -1,21 +1,21 @@
 # streamlit_app.py
-# 交差点の渋滞シミュレーター（高校生向け）
-# Streamlit で動作する Python 版
+# 交差点の渋滞シミュレーター（高校生向け）/ Streamlit
 
 import random
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
-from pathlib import Path
+from pathlib import Path  # ← Path を使うので必須
 
 # === フォント設定（日本語フォントがあれば使用） ===
-fp = Path("fonts/SourceHanCodeJP-Regular.otf")  # プロジェクト内に置いた場合
+# プロジェクト内に fonts/SourceHanCodeJP-Regular.otf を置くと確実
+fp = Path("fonts/SourceHanCodeJP-Regular.otf")
 if fp.exists():
     fm.fontManager.addfont(str(fp))
     plt.rcParams["font.family"] = "Source Han Code JP"
 else:
-    # マシンに入っている日本語フォントにフォールバック
+    # マシンにある日本語フォントにフォールバック
     for name in ["Noto Sans JP", "Noto Sans CJK JP", "IPAexGothic",
                  "Yu Gothic", "Hiragino Sans", "Meiryo"]:
         try:
@@ -24,9 +24,9 @@ else:
             break
         except Exception:
             pass
-
-# 日本語のマイナス記号が化けないように
+# マイナス記号の文字化け対策
 plt.rcParams["axes.unicode_minus"] = False
+
 # -----------------------------
 # 乱数シード設定
 # -----------------------------
@@ -41,7 +41,7 @@ def poisson(lam: float) -> int:
     return np.random.poisson(lam)
 
 # -----------------------------
-# シミュレーション関数
+# シミュレーション本体
 # -----------------------------
 def simulate(green_n, green_p, duration, lam_n, lam_p, seed):
     set_seed(seed)
@@ -54,7 +54,7 @@ def simulate(green_n, green_p, duration, lam_n, lam_p, seed):
     timeline = []
 
     for t in range(duration + 1):
-        # 到着
+        # 到着（1秒あたり平均 lam のポアソン到着）
         arrivals_n = poisson(lam_n)
         arrivals_p = poisson(lam_p)
         queue_n += arrivals_n
@@ -107,14 +107,18 @@ st.set_page_config(page_title="交差点の渋滞シミュレーター", layout=
 st.title("交差点の渋滞シミュレーター")
 st.caption("国道=10秒で最大20台（1秒 最大2台）、県道=10秒で最大10台（1秒 最大1台）。")
 
-# ▼▼▼ ここで λ の現在値を session_state から読み、未設定なら既定値にする（国道2.0, 県道1.0）
+# ▼ λ の既定値（国道2.0, 県道1.0）を session_state から取得／なければ設定
 lam_n_default = 2.0  # 10秒で20台
 lam_p_default = 1.0  # 10秒で10台
-lam_n = st.session_state.get("lam_n", lam_n_default)
-lam_p = st.session_state.get("lam_p", lam_p_default)
+if "lam_n" not in st.session_state:
+    st.session_state["lam_n"] = lam_n_default
+if "lam_p" not in st.session_state:
+    st.session_state["lam_p"] = lam_p_default
+lam_n = float(st.session_state["lam_n"])
+lam_p = float(st.session_state["lam_p"])
 
 # 左: 生徒用設定 / 右: グラフ
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns([1, 2], gap="large")
 
 with col1:
     st.subheader("信号設定")
@@ -122,20 +126,38 @@ with col1:
     green_p = st.slider("県道の青時間（秒）", 10, 120, 10, step=10)
     duration = st.slider("シミュレーション時間（秒）", 120, 1200, 600, step=60)
     seed = st.number_input("乱数シード", value=42, step=1)
+    st.divider()
+    show_sample = st.checkbox("サンプルグラフ（練習用）を表示", value=False)
 
 with col2:
-    # 右列にグラフ（λは上で session_state から読み込んだ値を使用）
+    # 右列にグラフ（λは session_state の値を使用）
     result = simulate(green_n, green_p, duration, lam_n, lam_p, int(seed))
     st.subheader("待ち台数の推移")
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot([d["t"] for d in result["timeline"]], [d["queue_n"] for d in result["timeline"]], label="国道の待ち")
-    ax.plot([d["t"] for d in result["timeline"]], [d["queue_p"] for d in result["timeline"]], label="県道の待ち")
+    ax.plot([d["t"] for d in result["timeline"]],
+            [d["queue_n"] for d in result["timeline"]], label="国道の待ち")
+    ax.plot([d["t"] for d in result["timeline"]],
+            [d["queue_p"] for d in result["timeline"]], label="県道の待ち")
+    ax.set_title("待ち台数の推移（シミュレーション）")
     ax.set_xlabel("経過時間（秒）")
     ax.set_ylabel("待ち台数（台）")
     ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
     st.pyplot(fig)
 
+    if show_sample:
+        st.subheader("サンプルグラフ（練習用）")
+        fig2, ax2 = plt.subplots(figsize=(8, 4))
+        ax2.plot([0, 1, 2], [0, 1, 0], label="国道の待ち")
+        ax2.set_title("待ち台数の推移（サンプル）")
+        ax2.set_xlabel("経過時間（秒）")
+        ax2.set_ylabel("待ち台数（台）")
+        ax2.legend()
+        ax2.grid(True, linestyle="--", alpha=0.5)
+        st.pyplot(fig2)
+
+# -----------------------------
+# 結果サマリー
 # -----------------------------
 st.subheader("結果まとめ")
 c1, c2, c3, c4 = st.columns(4)
@@ -146,20 +168,22 @@ c4.metric("後半平均（県道）", f"{result['avg_p']:.1f} 台")
 st.write(f"傾向: 国道 {result['trend_n']} ／ 県道 {result['trend_p']}")
 
 # -----------------------------
+# 詳細設定（教師用） ー サマリーの下に配置
+# -----------------------------
 with st.expander("詳細設定（教師用）", expanded=False):
     st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
-    # ここで入力された値は session_state に保存され、次回の再実行時に上のシミュレーションで使われます
+    # 入力変更 → session_state に保存 → 即時反映
     st.number_input(
         "国道の平均到着率 λN（台/秒）",
         key="lam_n",
-        value=float(lam_n),
+        value=float(st.session_state["lam_n"]),
         step=0.1,
         format="%.1f",
     )
     st.number_input(
         "県道の平均到着率 λP（台/秒）",
         key="lam_p",
-        value=float(lam_p),
+        value=float(st.session_state["lam_p"]),
         step=0.1,
         format="%.1f",
     )
