@@ -97,7 +97,7 @@ lam_p = st.session_state.get("lam_p", lam_p_default)
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    st.subheader("信号設定（生徒が操作）")
+    st.subheader("信号設定")
     green_n = st.slider("国道の青時間（秒）", 10, 120, 20, step=10)
     green_p = st.slider("県道の青時間（秒）", 10, 120, 10, step=10)
     duration = st.slider("シミュレーション時間（秒）", 120, 1200, 600, step=60)
