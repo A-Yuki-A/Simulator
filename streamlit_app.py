@@ -176,19 +176,29 @@ st.write(f"傾向: 国道 {result['trend_n']} ／ 県道 {result['trend_p']}")
 # -----------------------------
 with st.expander("詳細設定（教師用）", expanded=False):
     st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
-    # 入力変更 → session_state に保存 → 即時反映
-    st.number_input(
-        "国道の平均到着率 λN（台/秒）",
-        key="lam_n",
-        value=float(st.session_state["lam_n"]),
-        step=0.1,
-        format="%.1f",
-    )
-    st.number_input(
-        "県道の平均到着率 λP（台/秒）",
-        key="lam_p",
-        value=float(st.session_state["lam_p"]),
-        step=0.1,
-        format="%.1f",
-    )
+
+    col1, col2 = st.columns([3, 2])
+    with col1:
+        lam_n_input = st.number_input(
+            "国道の平均到着率 λN（台/秒）",
+            key="lam_n",
+            value=float(st.session_state["lam_n"]),
+            step=0.1,
+            format="%.1f",
+        )
+    with col2:
+        st.write(f"➡ 約 {lam_n_input*10:.1f} 台 / 10秒")
+
+    col3, col4 = st.columns([3, 2])
+    with col3:
+        lam_p_input = st.number_input(
+            "県道の平均到着率 λP（台/秒）",
+            key="lam_p",
+            value=float(st.session_state["lam_p"]),
+            step=0.1,
+            format="%.1f",
+        )
+    with col4:
+        st.write(f"➡ 約 {lam_p_input*10:.1f} 台 / 10秒")
+
     st.caption("※ 入力を変更すると即時に再計算され、グラフとサマリーに反映されます。")
