@@ -126,8 +126,8 @@ col1, col2 = st.columns([1, 2], gap="large")
 
 with col1:
     st.subheader("信号設定")
-    green_n = st.slider("国道の青時間（秒）", 10, 120, 20, step=10)
-    green_p = st.slider("県道の青時間（秒）", 10, 120, 10, step=10)
+    green_n = st.slider("国道の青時間（秒）", 10, 120, 20, step=5)
+    green_p = st.slider("県道の青時間（秒）", 10, 120, 10, step=5)
     duration = st.slider("シミュレーション時間（秒）", 120, 1200, 600, step=60)
     seed = st.number_input("乱数シード", value=42, step=1)
 
@@ -186,7 +186,7 @@ def _judge(lam, limit):
         return "過多（増加傾向）", "🛑", ratio
 
 with st.expander("詳細設定（教師用）", expanded=False):
-    st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。右側に「10秒で何台来るか」を同時表示します。")
+    st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数**")
 
     # --- 渋滞しない上限（現行=揺れありモデル）を計算 ---
     # 揺れなしモデルにしたい場合は 'mode="deterministic"' に変更
@@ -199,8 +199,8 @@ with st.expander("詳細設定（教師用）", expanded=False):
             "国道の平均到着率 λN（台/秒）",
             key="lam_n",
             value=float(st.session_state.get("lam_n", lam_n)),
-            step=0.1,
-            format="%.1f",
+            step=0.01,
+            format="%.2f",
         )
     with col2:
         st.write(f"➡ 約 **{lam_n_input*10:.1f} 台 / 10秒**")
@@ -211,8 +211,8 @@ with st.expander("詳細設定（教師用）", expanded=False):
             "県道の平均到着率 λP（台/秒）",
             key="lam_p",
             value=float(st.session_state.get("lam_p", lam_p)),
-            step=0.1,
-            format="%.1f",
+            step=0.01,
+            format="%.2f",
         )
     with col4:
         st.write(f"➡ 約 **{lam_p_input*10:.1f} 台 / 10秒**")
