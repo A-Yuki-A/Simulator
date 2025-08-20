@@ -1,10 +1,11 @@
+# 注意: これは React 用コードでしたが、Python (Streamlit) で動かす場合は SyntaxError になります。
+# Python で使うならコメントは # で始める必要があります。
+
 import React, { useMemo, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
 import { motion } from "framer-motion";
 
-/**
- * 交差点の渋滞シミュレーター（高校生向け）
- */
+// 交差点の渋滞シミュレーター (高校生向け)
 
 // 乱数（シード付き）ユーティリティ
 function mulberry32(seed) {
