@@ -3,7 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContai
 import { motion } from "framer-motion";
 
 /**
- * 交差点の渋滞シミュレーター（高校生向け）
+# 交差点の渋滞シミュレーター（高校生向け）
  * - 国道と県道がクロスする単一路線の信号制御
  * - 生徒が操作できるのは「各道路の青信号の長さ（10秒単位）」のみ
  * - 到着台数はランダム（ポアソン到着）
