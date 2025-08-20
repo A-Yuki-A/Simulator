@@ -10,18 +10,23 @@ import matplotlib.font_manager as fm
 from pathlib import Path
 
 # === フォント設定（日本語フォントがあれば使用） ===
-fp = Path("fonts/SourceHanCodeJP-Regular.otf")
+fp = Path("fonts/SourceHanCodeJP-Regular.otf")  # プロジェクト内に置いた場合
 if fp.exists():
     fm.fontManager.addfont(str(fp))
     plt.rcParams["font.family"] = "Source Han Code JP"
 else:
-    for name in ["Noto Sans JP", "IPAexGothic", "Yu Gothic", "Hiragino Sans", "Meiryo"]:
+    # マシンに入っている日本語フォントにフォールバック
+    for name in ["Noto Sans JP", "Noto Sans CJK JP", "IPAexGothic",
+                 "Yu Gothic", "Hiragino Sans", "Meiryo"]:
         try:
             fm.findfont(fm.FontProperties(family=name), fallback_to_default=False)
             plt.rcParams["font.family"] = name
             break
         except Exception:
             pass
+
+# 日本語のマイナス記号が化けないように
+plt.rcParams["axes.unicode_minus"] = False
 # -----------------------------
 # 乱数シード設定
 # -----------------------------
