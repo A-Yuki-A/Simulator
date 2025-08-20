@@ -87,7 +87,13 @@ st.set_page_config(page_title="交差点の渋滞シミュレーター", layout=
 st.title("交差点の渋滞シミュレーター（信号時間のみ操作）")
 st.caption("国道=10秒で最大30台（1秒 最大3台）、県道=10秒で最大10台（1秒 最大1台）。")
 
-# 左: 生徒用設定 / 右: 詳細設定とグラフ
+# ▼▼▼ ここで λ の現在値を session_state から読み、未設定なら既定値にする（国道2.0, 県道1.0）
+lam_n_default = 2.0  # 10秒で20台
+lam_p_default = 1.0  # 10秒で10台
+lam_n = st.session_state.get("lam_n", lam_n_default)
+lam_p = st.session_state.get("lam_p", lam_p_default)
+
+# 左: 生徒用設定 / 右: グラフ
 col1, col2 = st.columns([1, 2])
 
 with col1:
@@ -98,17 +104,8 @@ with col1:
     seed = st.number_input("乱数シード", value=42, step=1)
 
 with col2:
-    # 詳細設定（教師用）をグラフの上に配置
-    with st.expander("詳細設定（教師用）", expanded=False):
-        st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
-        # 初期値：国道=10秒で20台→2.0台/秒、県道=10秒で10台→1.0台/秒
-        lam_n = st.number_input("国道の平均到着率 λN（台/秒）", value=2.0, step=0.1, format="%.1f")
-        lam_p = st.number_input("県道の平均到着率 λP（台/秒）", value=1.0, step=0.1, format="%.1f")
-
-    # ここで計算（グラフを右列に表示するため）
+    # 右列にグラフ（λは上で session_state から読み込んだ値を使用）
     result = simulate(green_n, green_p, duration, lam_n, lam_p, int(seed))
-
-    # グラフを右横（この列）に表示
     st.subheader("待ち台数の推移")
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot([d["t"] for d in result["timeline"]], [d["queue_n"] for d in result["timeline"]], label="国道の待ち")
@@ -129,3 +126,25 @@ c2.metric("終了時 待ち（県道）", f"{result['end_p']} 台")
 c3.metric("後半平均（国道）", f"{result['avg_n']:.1f} 台")
 c4.metric("後半平均（県道）", f"{result['avg_p']:.1f} 台")
 st.write(f"傾向: 国道 {result['trend_n']} ／ 県道 {result['trend_p']}")
+
+# -----------------------------
+# ▼ 詳細設定（教師用）— 結果サマリーの“下”に移動
+# -----------------------------
+with st.expander("詳細設定（教師用）", expanded=False):
+    st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
+    # ここで入力された値は session_state に保存され、次回の再実行時に上のシミュレーションで使われます
+    st.number_input(
+        "国道の平均到着率 λN（台/秒）",
+        key="lam_n",
+        value=float(lam_n),
+        step=0.1,
+        format="%.1f",
+    )
+    st.number_input(
+        "県道の平均到着率 λP（台/秒）",
+        key="lam_p",
+        value=float(lam_p),
+        step=0.1,
+        format="%.1f",
+    )
+    st.caption("※ 入力を変更すると即時に再計算され、グラフとサマリーに反映されます。")
