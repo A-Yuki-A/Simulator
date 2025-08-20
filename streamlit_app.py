@@ -6,7 +6,21 @@ import random
 import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 
+# === フォント設定（日本語フォントがあれば使用） ===
+fp = Path("fonts/SourceHanCodeJP-Regular.otf")
+if fp.exists():
+    fm.fontManager.addfont(str(fp))
+    plt.rcParams["font.family"] = "Source Han Code JP"
+else:
+    for name in ["Noto Sans JP", "IPAexGothic", "Yu Gothic", "Hiragino Sans", "Meiryo"]:
+        try:
+            fm.findfont(fm.FontProperties(family=name), fallback_to_default=False)
+            plt.rcParams["font.family"] = name
+            break
+        except Exception:
+            pass
 # -----------------------------
 # 乱数シード設定
 # -----------------------------
