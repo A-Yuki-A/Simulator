@@ -161,31 +161,84 @@ st.write(f"傾向: 国道 {result['trend_n']} ／ 県道 {result['trend_p']}")
 # -----------------------------
 # 詳細設定（教師用） ー サマリーの下に配置
 # -----------------------------
-with st.expander("詳細設定（教師用）", expanded=False):
-    st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
+def _limits(green_n, green_p, mode="random"):
+    """渋滞しない上限λ（台/秒）を返す。mode='random'は現行仕様（randintの揺れあり）。"""
+    cycle = green_n + green_p
+    if cycle == 0:
+        return 0.0, 0.0
+    if mode == "random":
+        # 国道は青のとき平均1台/秒、県道は0.5台/秒 処理できるという仮定
+        fn, fp = 1.0, 0.5
+    else:  # 'deterministic' に切り替えると、毎秒きっちり cap を流すモデル
+        fn, fp = 2.0, 1.0
+    return fn * green_n / cycle, fp * green_p / cycle
 
+def _judge(lam, limit):
+    """λが上限に対してどのくらいかを判定（適正/注意/過多）"""
+    if limit <= 0:
+        return "—", "?", 0.0
+    ratio = lam / limit
+    if ratio <= 0.9:
+        return "適正", "✅", ratio
+    elif ratio <= 1.0:
+        return "注意（限界付近）", "⚠️", ratio
+    else:
+        return "過多（増加傾向）", "🛑", ratio
+
+with st.expander("詳細設定（教師用）", expanded=False):
+    st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。右側に「10秒で何台来るか」を同時表示します。")
+
+    # --- 渋滞しない上限（現行=揺れありモデル）を計算 ---
+    # 揺れなしモデルにしたい場合は 'mode="deterministic"' に変更
+    ln_limit, lp_limit = _limits(green_n, green_p, mode="random")
+
+    # 入力（横並び）＋ 10秒換算の表示
     col1, col2 = st.columns([3, 2])
     with col1:
         lam_n_input = st.number_input(
             "国道の平均到着率 λN（台/秒）",
             key="lam_n",
-            value=float(st.session_state["lam_n"]),
+            value=float(st.session_state.get("lam_n", lam_n)),
             step=0.1,
             format="%.1f",
         )
     with col2:
-        st.write(f"➡ 約 {lam_n_input*10:.1f} 台 / 10秒")
+        st.write(f"➡ 約 **{lam_n_input*10:.1f} 台 / 10秒**")
 
     col3, col4 = st.columns([3, 2])
     with col3:
         lam_p_input = st.number_input(
             "県道の平均到着率 λP（台/秒）",
             key="lam_p",
-            value=float(st.session_state["lam_p"]),
+            value=float(st.session_state.get("lam_p", lam_p)),
             step=0.1,
             format="%.1f",
         )
     with col4:
-        st.write(f"➡ 約 {lam_p_input*10:.1f} 台 / 10秒")
+        st.write(f"➡ 約 **{lam_p_input*10:.1f} 台 / 10秒**")
 
-    st.caption("※ 入力を変更すると即時に再計算され、グラフとサマリーに反映されます。")
+    # 判定表示（目安＆現在値の比較）
+    st.divider()
+    st.markdown("### λの目安（渋滞しない上限値）")
+    st.write(
+        f"- 国道の上限: **λN ≤ {ln_limit:.2f}**（10秒あたり **{ln_limit*10:.1f} 台**）\n"
+        f"- 県道の上限: **λP ≤ {lp_limit:.2f}**（10秒あたり **{lp_limit*10:.1f} 台**）"
+    )
+
+    jn, icon_n, r_n = _judge(lam_n_input, ln_limit)
+    jp, icon_p, r_p = _judge(lam_p_input, lp_limit)
+
+    st.markdown("### 現在の設定の判定")
+    st.write(
+        f"- 国道: **λN = {lam_n_input:.2f}** → {icon_n} **{jn}** "
+        f"(上限比 {r_n*100:.0f}%)"
+    )
+    st.write(
+        f"- 県道: **λP = {lam_p_input:.2f}** → {icon_p} **{jp}** "
+        f"(上限比 {r_p*100:.0f}%)"
+    )
+
+    st.caption(
+        "※ 目安：上限の90%以下=適正、90〜100%=注意、100%超=過多（長期的に待ちが増えやすい）。\n"
+        "※ 揺れなしモデル（毎秒きっちり捌く）に変えると上限値が上がります。"
+    )
