@@ -130,7 +130,6 @@ with col1:
     green_p = st.slider("県道の青時間（秒）", 10, 120, 10, step=10)
     duration = st.slider("シミュレーション時間（秒）", 120, 1200, 600, step=60)
     seed = st.number_input("乱数シード", value=42, step=1)
-    st.divider()
 
 with col2:
     # 右列にグラフ（λは session_state の値を使用）
