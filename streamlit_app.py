@@ -149,17 +149,20 @@ with col2:
     ax.grid(True, linestyle="--", alpha=0.5)
     st.pyplot(fig)
 
-    if show_sample:
-        st.subheader("サンプルグラフ（練習用）")
-        fig2, ax2 = plt.subplots(figsize=(8, 4))
-        ax2.plot([0, 1, 2], [0, 1, 0], label="国道の待ち")
-        ax2.set_title("待ち台数の推移（サンプル）")
-        ax2.set_xlabel("経過時間（秒）")
-        ax2.set_ylabel("待ち台数（台）")
-        ax2.legend()
-        ax2.grid(True, linestyle="--", alpha=0.5)
-        st.pyplot(fig2)
+    st.subheader("サンプルグラフ（練習用）")
+    x = list(range(11))  # 0〜10秒
+    y_n = [i*0.5 for i in x]   # 国道 = 毎秒0.5台増える
+    y_p = [i*0.2 for i in x]   # 県道 = 毎秒0.2台増える
 
+    fig2, ax2 = plt.subplots(figsize=(8, 4))
+    ax2.plot(x, y_n, label="国道の待ち")
+    ax2.plot(x, y_p, label="県道の待ち")
+    ax2.set_title("サンプル（単純な直線の待ち台数）")
+    ax2.set_xlabel("経過時間（秒）")
+    ax2.set_ylabel("待ち台数（台）")
+    ax2.legend()
+    ax2.grid(True, linestyle="--", alpha=0.5)
+    st.pyplot(fig2)
 # -----------------------------
 # 結果サマリー
 # -----------------------------
