@@ -7,6 +7,7 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+from pathlib import Path
 
 # === フォント設定（日本語フォントがあれば使用） ===
 fp = Path("fonts/SourceHanCodeJP-Regular.otf")
