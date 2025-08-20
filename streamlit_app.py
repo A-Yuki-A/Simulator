@@ -1,199 +1,126 @@
-# streamlit_app.py
-# 交差点の渋滞シミュレーター（信号時間のみ操作）
-# - 国道: 10秒で最大30台（= 1秒 最大3台）
-# - 県道: 10秒で最大10台（= 1秒 最大1台）
-# - 信号は「国道→県道→国道…」の交互。生徒は青時間だけ10秒刻みで操作。
-# - 到着台数・処理台数は毎秒ランダム（ポアソン到着、処理は上限内で一様ランダム）
-# - 乱数シードを固定すれば結果の再現が可能
+import React, { useMemo, useState } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
+import { motion } from "framer-motion";
 
-import math
-import random
-import numpy as np
-import streamlit as st
-import matplotlib.pyplot as plt
+/**
+ * 交差点の渋滞シミュレーター（高校生向け）
+ */
 
-# -----------------------------
-# 乱数シード（再現性のため）
-# -----------------------------
-def set_seed(seed: int):
-    random.seed(seed)
-    np.random.seed(seed)
+// 乱数（シード付き）ユーティリティ
+function mulberry32(seed) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
-# -----------------------------
-# ポアソン乱数（到着台数に使用）
-# -----------------------------
-def poisson(lam: float) -> int:
-    # NumPy の乱数を使用（seedで再現可）
-    return np.random.poisson(lam)
+function simulate({ greenN, greenP, duration = 600, lambdaN = 2.2, lambdaP = 0.8, seed = 42 }) {
+  const rng = mulberry32(seed);
+  const maxPerSecN = 3;
+  const maxPerSecP = 1;
 
-# -----------------------------
-# シミュレーション本体
-# -----------------------------
-def simulate(
-    green_n: int,   # 国道の青時間（秒, 10秒刻み）
-    green_p: int,   # 県道の青時間（秒, 10秒刻み）
-    duration: int,  # 総シミュレーション秒
-    lam_n: float,   # 国道の平均到着率（台/秒）
-    lam_p: float,   # 県道の平均到着率（台/秒）
-    seed: int,      # 乱数シード
-):
-    set_seed(seed)
+  let queueN = 0;
+  let queueP = 0;
+  const cycle = greenN + greenP;
+  const timeline = [];
 
-    # 1秒あたりの最大処理台数（青のとき）
-    cap_n = 3  # 国道（10秒で最大30）
-    cap_p = 1  # 県道（10秒で最大10）
+  for (let t = 0; t <= duration; t++) {
+    const arrivalsN = Math.floor(-Math.log(rng()) / (1 / lambdaN));
+    const arrivalsP = Math.floor(-Math.log(rng()) / (1 / lambdaP));
+    queueN += arrivalsN;
+    queueP += arrivalsP;
 
-    queue_n = 0  # 国道の待ち台数
-    queue_p = 0  # 県道の待ち台数
-    cycle = green_n + green_p
+    const mod = t % cycle;
+    const isGreenN = mod < greenN;
 
-    timeline = []  # 結果を記録（描画用）
-
-    for t in range(duration + 1):
-        # 1) 到着（毎秒ポアソン分布）
-        arrivals_n = poisson(lam_n)
-        arrivals_p = poisson(lam_p)
-        queue_n += arrivals_n
-        queue_p += arrivals_p
-
-        # 2) 信号（交互制御：先に国道が青）
-        mod = t % cycle
-        is_green_n = (mod < green_n)
-
-        # 3) 処理（青側のみ、1秒の上限までランダム処理）
-        if is_green_n:
-            serve = random.randint(0, cap_n)  # 0〜cap_nのどれか
-            served = min(queue_n, serve)
-            queue_n -= served
-        else:
-            serve = random.randint(0, cap_p)  # 0〜cap_pのどれか
-            served = min(queue_p, serve)
-            queue_p -= served
-
-        timeline.append({
-            "t": t,
-            "queue_n": queue_n,
-            "queue_p": queue_p,
-            "green": "国道=青/県道=赤" if is_green_n else "国道=赤/県道=青",
-            "arrivals_n": arrivals_n,
-            "arrivals_p": arrivals_p,
-        })
-
-    # 指標（後半平均と終了時）
-    end_n = timeline[-1]["queue_n"]
-    end_p = timeline[-1]["queue_p"]
-    mid = len(timeline) // 2
-    avg_n = sum(d["queue_n"] for d in timeline[mid:]) / (len(timeline) - mid)
-    avg_p = sum(d["queue_p"] for d in timeline[mid:]) / (len(timeline) - mid)
-
-    def trend(end, avg):
-        if end > avg * 1.1:
-            return "増加傾向（渋滞気味）"
-        elif end < avg * 0.9:
-            return "減少傾向"
-        else:
-            return "横ばい"
-
-    return {
-        "timeline": timeline,
-        "end_n": end_n,
-        "end_p": end_p,
-        "avg_n": avg_n,
-        "avg_p": avg_p,
-        "trend_n": trend(end_n, avg_n),
-        "trend_p": trend(end_p, avg_p),
-        "cycle": cycle,
-        "green_n": green_n,
-        "green_p": green_p,
-        "lam_n": lam_n,
-        "lam_p": lam_p,
+    if (isGreenN) {
+      const canServe = Math.floor(rng() * (maxPerSecN + 1));
+      queueN -= Math.min(queueN, canServe);
+    } else {
+      const canServe = Math.floor(rng() * (maxPerSecP + 1));
+      queueP -= Math.min(queueP, canServe);
     }
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
-st.set_page_config(page_title="交差点の渋滞シミュレーター", layout="centered")
+    timeline.push({ t, queueN, queueP });
+  }
 
-st.title("交差点の渋滞シミュレーター（信号時間のみ操作）")
-st.caption("国道=10秒で最大30台（1秒 最大3台）、県道=10秒で最大10台（1秒 最大1台）。到着・処理は毎秒ランダム。")
+  const endN = timeline[timeline.length - 1].queueN;
+  const endP = timeline[timeline.length - 1].queueP;
+  const mid = Math.floor(timeline.length / 2);
+  const avgN = timeline.slice(mid).reduce((s, d) => s + d.queueN, 0) / (timeline.length - mid);
+  const avgP = timeline.slice(mid).reduce((s, d) => s + d.queueP, 0) / (timeline.length - mid);
 
-colL, colR = st.columns(2)
+  const trend = (end, avg) => (end > avg * 1.1 ? "増加傾向" : end < avg * 0.9 ? "減少傾向" : "横ばい");
 
-with colL:
-    st.subheader("信号設定（生徒が操作）")
-    green_n = st.slider("国道の青時間（秒）", min_value=10, max_value=120, step=10, value=20)
-    green_p = st.slider("県道の青時間（秒）", min_value=10, max_value=120, step=10, value=10)
-    st.markdown(f"**サイクル長:** {green_n + green_p} 秒（国道→県道の順に青）")
+  return { timeline, endN, endP, avgN, avgP, trendN: trend(endN, avgN), trendP: trend(endP, avgP) };
+}
 
-    st.subheader("シミュレーション設定")
-    duration = st.slider("総時間（秒）", min_value=120, max_value=1200, step=60, value=600)
-    seed = st.number_input("乱数シード（再現用）", value=42, step=1)
+export default function IntersectionSimulator() {
+  const [greenN, setGreenN] = useState(20);
+  const [greenP, setGreenP] = useState(10);
+  const [duration, setDuration] = useState(600);
+  const [seed, setSeed] = useState(42);
+  const [lambdaN, setLambdaN] = useState(2.2);
+  const [lambdaP, setLambdaP] = useState(0.8);
 
-with colR:
-    with st.expander("詳細設定（教師用）", expanded=False):
-        st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
-        lam_n = st.number_input("国道の平均到着率 λN（台/秒）", min_value=0.0, step=0.1, value=2.2, format="%.1f")
-        lam_p = st.number_input("県道の平均到着率 λP（台/秒）", min_value=0.0, step=0.1, value=0.8, format="%.1f")
-        st.markdown(
-            "- λN を大きくすると国道が混みやすく（通勤ラッシュ等）\n"
-            "- λP を大きくすると県道が混みやすく（イベント帰り等）"
-        )
-    st.info(
-        "ヒント：終了時の待ち台数が小さく、かつ後半平均より減っていれば渋滞は緩和方向です。"
-        "どちらかが増え続ける場合は、その道路の青を長くする、またはサイクルを短くして応答を速くしましょう。"
-    )
+  const data = useMemo(() => simulate({ greenN, greenP, duration, lambdaN, lambdaP, seed }), [greenN, greenP, duration, lambdaN, lambdaP, seed]);
 
-# 実行（値変更で毎回再計算）
-result = simulate(green_n, green_p, duration, lam_n, lam_p, int(seed))
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <motion.h1 initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="text-2xl font-bold mb-2">
+        交差点の渋滞シミュレーター
+      </motion.h1>
 
-# -----------------------------
-# サマリー表示
-# -----------------------------
-st.subheader("結果サマリー")
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("終了時 待ち（国道）", f"{result['end_n']} 台")
-c2.metric("終了時 待ち（県道）", f"{result['end_p']} 台")
-c3.metric("後半平均（国道）", f"{result['avg_n']:.1f} 台")
-c4.metric("後半平均（県道）", f"{result['avg_p']:.1f} 台")
-st.write(f"傾向： 国道 **{result['trend_n']}** ／ 県道 **{result['trend_p']}**")
+      <div className="grid md:grid-cols-2 gap-4 items-start">
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl shadow bg-white">
+            <h2 className="text-lg font-semibold mb-3">信号設定（生徒が操作）</h2>
+            <input type="range" min={10} max={120} step={10} value={greenN} onChange={(e)=>setGreenN(parseInt(e.target.value))} />
+            <div>国道青: {greenN}s</div>
+            <input type="range" min={10} max={120} step={10} value={greenP} onChange={(e)=>setGreenP(parseInt(e.target.value))} />
+            <div>県道青: {greenP}s</div>
+          </div>
+          <div className="p-4 rounded-2xl shadow bg-white">
+            <h2 className="text-lg font-semibold mb-3">シミュレーション時間</h2>
+            <input type="range" min={120} max={1200} step={60} value={duration} onChange={(e)=>setDuration(parseInt(e.target.value))} />
+            <div>{duration} 秒</div>
+            <input type="number" value={seed} onChange={(e)=>setSeed(parseInt(e.target.value))} />
+          </div>
+        </div>
 
-# -----------------------------
-# 時系列グラフ（matplotlib）
-# -----------------------------
-st.subheader("待ち台数の推移")
-fig, ax = plt.subplots(figsize=(9, 4))
-t = [d["t"] for d in result["timeline"]]
-qN = [d["queue_n"] for d in result["timeline"]]
-qP = [d["queue_p"] for d in result["timeline"]]
-ax.plot(t, qN, label="国道の待ち")
-ax.plot(t, qP, label="県道の待ち")
-ax.set_xlabel("経過時間（秒）")
-ax.set_ylabel("待ち台数（台）")
-ax.grid(True, linestyle="--", alpha=0.5)
-ax.legend(loc="upper left")
+        <div className="p-4 rounded-2xl shadow bg-white h-full">
+          <h2 className="text-lg font-semibold mb-3">待ち台数の推移</h2>
+          <ResponsiveContainer width="100%" height={420}>
+            <LineChart data={data.timeline}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="t" label={{ value: "経過時間（秒）", position: "insideBottom", offset: -5 }} />
+              <YAxis label={{ value: "待ち台数（台）", angle: -90, position: "insideLeft" }} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="queueN" name="国道の待ち" stroke="#8884d8" />
+              <Line type="monotone" dataKey="queueP" name="県道の待ち" stroke="#82ca9d" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-# 信号状態を背景帯で表示（任意：視覚的に理解しやすく）
-cycle = result["cycle"]
-gN = result["green_n"]
-gP = result["green_p"]
-ymin, ymax = ax.get_ylim()
-x = 0
-while x < duration:
-    # 国道が青（先行）
-    ax.axvspan(x, min(x + gN, duration), color="tab:blue", alpha=0.06)
-    # 県道が青
-    ax.axvspan(min(x + gN, duration), min(x + gN + gP, duration), color="tab:orange", alpha=0.06)
-    x += cycle
-
-st.pyplot(fig)
-
-# -----------------------------
-# 学習用メモ
-# -----------------------------
-with st.expander("学習のポイント（授業で使うヒント）"):
-    st.markdown(
-        "- **乱数シード**を固定すると、同じ設定で同じ結果が再現できます（比較しやすい）。\n"
-        "- **サイクルを短く**すると応答が速くなり、片側がため込まれにくくなる一方で、1度に流せる台数は減る傾向。\n"
-        "- **到着率（λ）**が処理能力を上回ると、どれだけ工夫しても待ちは増えます（容量の限界に着目）。\n"
-        "- 国道: 1秒あたり最大3台、県道: 1秒あたり最大1台という**処理能力の違い**を意識して配分を考える。"
-    )
+      <div className="mt-6 p-4 rounded-2xl shadow bg-white">
+        <h2 className="text-lg font-semibold mb-3">結果サマリー</h2>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="p-3 rounded-xl bg-gray-50">
+            <div>終了時 待ち台数（国道）</div>
+            <div className="text-xl font-bold">{data.endN} 台</div>
+            <div>傾向: {data.trendN}</div>
+          </div>
+          <div className="p-3 rounded-xl bg-gray-50">
+            <div>終了時 待ち台数（県道）</div>
+            <div className="text-xl font-bold">{data.endP} 台</div>
+            <div>傾向: {data.trendP}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
