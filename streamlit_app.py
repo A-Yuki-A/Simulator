@@ -26,7 +26,7 @@ def poisson(lam: float) -> int:
 def simulate(green_n, green_p, duration, lam_n, lam_p, seed):
     set_seed(seed)
 
-    cap_n = 3  # 国道: 1秒で最大3台
+    cap_n = 2  # 国道: 1秒で最大2台
     cap_p = 1  # 県道: 1秒で最大1台
 
     queue_n, queue_p = 0, 0
@@ -84,8 +84,8 @@ def simulate(green_n, green_p, duration, lam_n, lam_p, seed):
 # -----------------------------
 st.set_page_config(page_title="交差点の渋滞シミュレーター", layout="centered")
 
-st.title("交差点の渋滞シミュレーター（信号時間のみ操作）")
-st.caption("国道=10秒で最大30台（1秒 最大3台）、県道=10秒で最大10台（1秒 最大1台）。")
+st.title("交差点の渋滞シミュレーター")
+st.caption("国道=10秒で最大20台（1秒 最大2台）、県道=10秒で最大10台（1秒 最大1台）。")
 
 # ▼▼▼ ここで λ の現在値を session_state から読み、未設定なら既定値にする（国道2.0, 県道1.0）
 lam_n_default = 2.0  # 10秒で20台
@@ -117,9 +117,7 @@ with col2:
     st.pyplot(fig)
 
 # -----------------------------
-# サマリー（グラフの下に配置）
-# -----------------------------
-st.subheader("結果サマリー")
+st.subheader("結果まとめ")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("終了時 待ち（国道）", f"{result['end_n']} 台")
 c2.metric("終了時 待ち（県道）", f"{result['end_p']} 台")
@@ -127,8 +125,6 @@ c3.metric("後半平均（国道）", f"{result['avg_n']:.1f} 台")
 c4.metric("後半平均（県道）", f"{result['avg_p']:.1f} 台")
 st.write(f"傾向: 国道 {result['trend_n']} ／ 県道 {result['trend_p']}")
 
-# -----------------------------
-# ▼ 詳細設定（教師用）— 結果サマリーの“下”に移動
 # -----------------------------
 with st.expander("詳細設定（教師用）", expanded=False):
     st.markdown("λ（ラムダ）は **1秒あたり平均で到着する台数** です。")
