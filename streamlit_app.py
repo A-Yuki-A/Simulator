@@ -108,12 +108,16 @@ st.title("交差点の渋滞シミュレーター")
 st.caption("国道=10秒で最大20台（1秒 最大2台）、県道=10秒で最大10台（1秒 最大1台）。")
 
 # ▼ λ の既定値（国道2.0, 県道1.0）を session_state から取得／なければ設定
-lam_n_default = 2.0  # 10秒で20台
-lam_p_default = 1.0  # 10秒で10台
+# ▼ λ の既定値（10秒あたりの安全目安：国道6台、県道1.5台）
+lam_n_default = 0.60  # 国道: 10秒で6台
+lam_p_default = 0.15  # 県道: 10秒で1.5台
+
+# session_state 初期化
 if "lam_n" not in st.session_state:
     st.session_state["lam_n"] = lam_n_default
 if "lam_p" not in st.session_state:
     st.session_state["lam_p"] = lam_p_default
+
 lam_n = float(st.session_state["lam_n"])
 lam_p = float(st.session_state["lam_p"])
 
